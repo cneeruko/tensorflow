@@ -77,7 +77,7 @@ class SymbolicGradientBuilder {
   Status CallGradFunction(const Operation& op,
                           const std::vector<Output>& grad_inputs,
                           std::vector<Output>* grad_outputs);
-  
+
   // Returns a list mapping whether each node in the graph is reachable
   // from outputs_. Keyed by node id.
   std::vector<bool> GetReachableNodes();
@@ -156,7 +156,7 @@ std::vector<bool> SymbolicGradientBuilder::GetReachableNodes() {
       reachable_nodes[out.node()->id()] = true;
     }
   }
-  
+
   while (!queue.empty()) {
     Node* n = queue.front();
     queue.pop_front();
@@ -175,8 +175,14 @@ Status SymbolicGradientBuilder::Initialize() {
         "Must specify a gradient input for each output.");
   }
   std::vector<bool> reachable_nodes = GetReachableNodes();
-  // TODO(theflofly) Check that inputs_ are reachable from
-  // outputs_ using reachable_nodes
+  for (const Output& input : inputs_) {
+    if (!reachable_nodes[input.node()->id()]) {
+      return errors::InvalidArgument(
+          "Cannot compute the partial derivative for node '",
+          input.node()->name(),
+          "' as it's unreachable from the output node(s).");
+    }
+  }
   grad_outputs_->clear();
   grad_outputs_->resize(inputs_.size());
   // Populate `output_nodes_` from node ids in `outputs_`.
